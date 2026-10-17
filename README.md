@@ -9,7 +9,7 @@
 1.2: create email accounts with login verification so users can log into their account
 
 2: Create local model to monitor target account
-z
+
 2.1: Create the tools the local model needs (Ability to read and reply to email)
 
 
