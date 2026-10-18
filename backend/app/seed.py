@@ -6,18 +6,23 @@ data to work with. There is no registration path; accounts only come from here.
 
 Run standalone:  python -m app.seed      (from the backend/ directory)
 
-Note: password hashes are set by the login system (issue #2); this seed leaves
-them empty.
+Note: ensure_passwords() sets bcrypt hashes for the two demo accounts (issue #2)
+using DEFAULT_PASSWORDS, filling them in if they are not already set.
 """
 from datetime import date, datetime
 
 from .crud import _get_user_by_role
 from .database import Base, SessionLocal, engine
 from .models import Email, User
+from .security import hash_password
 
 # Two predefined accounts. "attacker"/"target" are experiment role names only.
 ATTACKER_EMAIL = "attacker@wemail.com"
 TARGET_EMAIL = "target@wemail.com"
+
+# Synthetic, local-only demo credentials for the two predefined accounts.
+# These are NOT real secrets; they exist so the team can log in locally.
+DEFAULT_PASSWORDS = {"attacker": "attacker123", "target": "target123"}
 
 
 def init_db() -> None:
@@ -25,13 +30,31 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
 
 
+def ensure_passwords(db) -> None:
+    """Set bcrypt hashes for the predefined accounts if they are not set yet.
+
+    Runs on every seed so an already-created DB (from issue #3, before passwords
+    existed) also gets usable credentials, while existing hashes are left alone.
+    """
+    changed = False
+    for role, plaintext in DEFAULT_PASSWORDS.items():
+        user = _get_user_by_role(db, role)
+        if user is not None and not user.password_hash:
+            user.password_hash = hash_password(plaintext)
+            changed = True
+    if changed:
+        db.commit()
+
+
 def seed() -> None:
-    """Insert the two accounts and sample emails if they are not present yet."""
+    """Insert the two accounts and sample emails if absent, and ensure passwords."""
     init_db()
     db = SessionLocal()
     try:
-        if _get_user_by_role(db, "attacker") and _get_user_by_role(db, "target"):
-            return  # already seeded; keep this idempotent
+        already = _get_user_by_role(db, "attacker") and _get_user_by_role(db, "target")
+        if already:
+            ensure_passwords(db)  # idempotent: fill in passwords if missing
+            return
 
         attacker = User(
             role="attacker",
@@ -87,6 +110,7 @@ def seed() -> None:
         ]
         db.add_all(samples)
         db.commit()
+        ensure_passwords(db)  # set credentials for the freshly created accounts
     finally:
         db.close()
 

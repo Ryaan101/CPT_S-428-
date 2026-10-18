@@ -8,9 +8,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import FRONTEND_ORIGINS
+from .routers import auth as auth_router
 from .seed import seed
 
 app = FastAPI(title="wemail backend", version="0.1.0")
+
+app.include_router(auth_router.router)
 
 
 @app.on_event("startup")

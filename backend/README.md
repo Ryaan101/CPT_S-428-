@@ -39,3 +39,26 @@ backend/
     main.py      # FastAPI app, CORS, /health
   requirements.txt
 ```
+
+## Accounts & login (issue #2)
+
+Two predefined accounts only — there is no registration (`POST /auth/register`
+returns 403). Synthetic, local-only demo credentials:
+
+| Role     | Email                | Password      |
+|----------|----------------------|---------------|
+| attacker | attacker@wemail.com  | `attacker123` |
+| target   | target@wemail.com    | `target123`   |
+
+These are set on first startup (the DB auto-seeds). They are **not secrets** —
+they exist so the team can log in locally. Change them via the DB if desired.
+
+### Auth endpoints
+- `POST /auth/login` — body `{ "email", "password" }` → `{ access_token, token_type, user, inbox_path }`. Wrong credentials → `401`.
+- `GET  /auth/me` — `Authorization: Bearer <token>` → the caller's OWN account + profile. Another account's data is never returned here.
+- `POST /auth/logout` — `Authorization: Bearer <token>` → revokes the token (reuse → `401`).
+- `POST /auth/register` — always `403` (registration disabled).
+
+### Configuration (auth)
+- `SECRET_KEY` — JWT signing key (default is a dev-only placeholder; set a real one).
+- `TOKEN_TTL_MINUTES` — token lifetime (default `120`).

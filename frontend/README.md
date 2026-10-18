@@ -40,3 +40,10 @@ frontend/
     api.js        # backend client (health check)
     style.css
 ```
+
+## Logging in (issue #2)
+
+Start the backend, then open the dev server. Log in with a predefined account
+(see `../backend/README.md` for the synthetic credentials). On success the token
+is stored in `localStorage` and a minimal account panel is shown with a logout
+button. The full inbox UI is issue #4.

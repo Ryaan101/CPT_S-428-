@@ -67,3 +67,31 @@ h1 { margin: 0; font-size: 1.6rem; }
 }
 .status.ok { color: var(--ok); }
 .status.down { color: var(--down); }
+
+.error {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  color: var(--down);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.account { margin: 4px 0 8px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
+.account dt { color: var(--muted); font-size: 0.8rem; }
+.account dd { margin: 0; font-size: 0.9rem; }
+.account code { font-size: 0.82rem; }
+
+.logout {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.logout:hover { background: #f9fafb; }
