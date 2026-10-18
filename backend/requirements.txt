@@ -2,3 +2,4 @@
 # (the local dev interpreter). Add feature deps (DB, auth) in their own issues.
 fastapi==0.112.2
 uvicorn[standard]==0.30.6
+SQLAlchemy==2.0.36

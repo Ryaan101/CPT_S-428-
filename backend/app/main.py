@@ -8,8 +8,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import FRONTEND_ORIGINS
+from .seed import seed
 
 app = FastAPI(title="wemail backend", version="0.1.0")
+
+
+@app.on_event("startup")
+def on_startup():
+    """Create tables and seed the two predefined accounts if needed (issue #3)."""
+    seed()
 
 # Allow the local dev frontend (Vite) to call the API from its own origin.
 app.add_middleware(
