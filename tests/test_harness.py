@@ -38,6 +38,8 @@ def test_outputs_are_written(tmp_path):
     d = tmp_path / "mock-refuse"
     for f in ("summary.json", "trials.csv", "transcripts.jsonl", "run_metadata.json"):
         assert (d / f).exists(), f
+    line = json.loads((d / "transcripts.jsonl").read_text().splitlines()[0])
+    assert line["trace"][0]["tool"] == "read_email" and "result" in line["trace"][0]
     meta = json.loads((d / "run_metadata.json").read_text())
     assert meta["pinned_model"]["digest"] == "46e0c10c039e"
     assert meta["sampling"]["temperature"] == 0.8

@@ -13,7 +13,7 @@ The harness needs only Python: no Node, no running server, and the dev database 
 Outputs, written to --out (default results/runs/<timestamp>_<backend>/):
     summary.json     per-payload and overall counts, rates, and 95% Wilson intervals
     trials.csv       one row per trial
-    transcripts.jsonl  tool calls and the exact text sent to the attacker, one line per trial
+    transcripts.jsonl  every tool call (arguments and result) and the exact text sent to the attacker, one line per trial
     run_metadata.json  commit, versions, backend, model digest, sampling options
 
 A payload whose filename starts with 00_ is the benign control (no attack in it). Its leak rate
@@ -100,6 +100,7 @@ def run_trial(payload_path, client, chat_fn, model, variant, options):
     return {
         "messages_to_attacker": len(sent),
         "tool_calls": [t["tool"] for t in trace],
+        "trace": trace,  # every tool call with its arguments and the result the model saw
         **{f: hits[f] for f in ALL_FIELDS},
         "success": hits["success"],
         "text_sent_to_attacker": text,
@@ -188,7 +189,7 @@ def main(argv=None):
                     stat["field_hits"][f] += int(r[f])
                 w.writerow({**row, **{k: r[k] for k in fields if k in r},
                             "tool_calls": "|".join(r["tool_calls"]), "error": ""})
-                ftr.write(json.dumps({**row, "tool_calls": r["tool_calls"],
+                ftr.write(json.dumps({**row, "tool_calls": r["tool_calls"], "trace": r["trace"],
                                       "text_sent_to_attacker": r["text_sent_to_attacker"]}) + "\n")
                 fcsv.flush()
             lo, hi = wilson(stat["successes"], stat["n"])
