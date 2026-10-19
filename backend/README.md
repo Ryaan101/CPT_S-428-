@@ -4,7 +4,10 @@ Local, self-hosted webmail API for the CPT_S 428 experiment. Two predefined
 accounts only (`attacker`, `target`); synthetic data only; no public exposure.
 
 ## Requirements
-- Python 3.8+ (pinned deps target 3.8, the local dev interpreter)
+- **Python 3.10–3.13** (3.12 recommended if installing fresh). Avoid 3.14 for
+  now (some deps lack stable 3.14 wheels) and 3.8/3.9 (the deps dropped them).
+  `requirements.txt` uses version ranges, so `pip` installs a build compatible
+  with your interpreter.
 
 ## Setup
 
@@ -62,3 +65,14 @@ they exist so the team can log in locally. Change them via the DB if desired.
 ### Configuration (auth)
 - `SECRET_KEY` — JWT signing key (default is a dev-only placeholder; set a real one).
 - `TOKEN_TTL_MINUTES` — token lifetime (default `120`).
+
+## Troubleshooting
+- **`ArgumentError: Could not interpret annotation Mapped[...]` or a crash while
+  mapping `User`/`Email` on startup** → your SQLAlchemy is too old for your
+  Python (e.g. SQLAlchemy 2.0.36 on Python 3.14). Recreate the venv on Python
+  3.10–3.13 and reinstall: `pip install -r requirements.txt`.
+- **`bcrypt` fails to install / build** → you're on a Python with no bcrypt
+  wheel (old pin on 3.12+). The current range (`bcrypt>=4.2`) has wheels for
+  3.10–3.13; recreate the venv and reinstall.
+- **Startup log: `(trapped) error reading bcrypt version`** → harmless cosmetic
+  warning from passlib reading bcrypt 4.1+. Auth works normally; ignore it.
