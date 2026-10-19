@@ -6,15 +6,15 @@ const TOKEN_KEY = 'wemail.token'
 
 function loadToken() {
   try {
-    return localStorage.getItem(TOKEN_KEY) || ''
+    return sessionStorage.getItem(TOKEN_KEY) || ''
   } catch (_) {
     return ''
   }
 }
 function saveToken(t) {
   try {
-    if (t) localStorage.setItem(TOKEN_KEY, t)
-    else localStorage.removeItem(TOKEN_KEY)
+    if (t) sessionStorage.setItem(TOKEN_KEY, t)
+    else sessionStorage.removeItem(TOKEN_KEY)
   } catch (_) {
     /* storage may be unavailable; session still works in-memory */
   }
