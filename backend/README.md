@@ -4,10 +4,10 @@ Local, self-hosted webmail API for the CPT_S 428 experiment. Two predefined
 accounts only (`attacker`, `target`); synthetic data only; no public exposure.
 
 ## Requirements
-- **Python 3.10–3.13** (3.12 recommended if installing fresh). Avoid 3.14 for
-  now (some deps lack stable 3.14 wheels) and 3.8/3.9 (the deps dropped them).
-  `requirements.txt` uses version ranges, so `pip` installs a build compatible
-  with your interpreter.
+- **Python 3.14** (team standard; verified on CPython 3.14.6). Dependencies are
+  pinned to an exact 3.14-verified set in `requirements.txt` so everyone runs
+  the identical stack. On Windows, install Python 3.14 from python.org and use
+  `py -3.14` if `python3` isn't on PATH.
 
 ## Setup
 
@@ -68,11 +68,10 @@ they exist so the team can log in locally. Change them via the DB if desired.
 
 ## Troubleshooting
 - **`ArgumentError: Could not interpret annotation Mapped[...]` or a crash while
-  mapping `User`/`Email` on startup** → your SQLAlchemy is too old for your
-  Python (e.g. SQLAlchemy 2.0.36 on Python 3.14). Recreate the venv on Python
-  3.10–3.13 and reinstall: `pip install -r requirements.txt`.
-- **`bcrypt` fails to install / build** → you're on a Python with no bcrypt
-  wheel (old pin on 3.12+). The current range (`bcrypt>=4.2`) has wheels for
-  3.10–3.13; recreate the venv and reinstall.
+  mapping `User`/`Email` on startup** → your installed deps are older than those
+  pinned here (e.g. an old SQLAlchemy on Python 3.14). Recreate the venv on
+  Python 3.14 and reinstall the pinned set: `pip install -r requirements.txt`.
+- **`bcrypt` fails to install / build** → you're not on the pinned `bcrypt==4.3.0`
+  (older bcrypt lacks Python 3.14 wheels). Recreate the venv on 3.14 and reinstall.
 - **Startup log: `(trapped) error reading bcrypt version`** → harmless cosmetic
   warning from passlib reading bcrypt 4.1+. Auth works normally; ignore it.
