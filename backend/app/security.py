@@ -25,7 +25,8 @@ from .crud import _get_user_by_id
 from .database import get_db
 from .models import User
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-secret-change-me")
+DEV_SECRET_KEY = "dev-only-insecure-secret-change-me"
+SECRET_KEY = os.environ.get("SECRET_KEY", DEV_SECRET_KEY)
 ALGORITHM = "HS256"
 TOKEN_TTL_MINUTES = int(os.environ.get("TOKEN_TTL_MINUTES", "120"))
 

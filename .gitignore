@@ -16,3 +16,7 @@ frontend/dist/
 .env
 .env.*
 !.env.example
+
+# Test / harness output (the committed reference results live in results/reference/)
+.pytest_cache/
+results/runs/

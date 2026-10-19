@@ -1,4 +1,4 @@
-# wemail — backend (FastAPI)
+# wemail backend (FastAPI)
 
 Local, self-hosted webmail API for the CPT_S 428 experiment. Two predefined
 accounts only (`attacker`, `target`); synthetic data only; no public exposure.
@@ -16,31 +16,42 @@ cd backend
 python3 -m venv .venv              # Windows: use py if python3 doesn't work
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-## Run
-
-```bash
-# from backend/ with the venv active
+cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-- API root: http://localhost:8000
-- Interactive docs: http://localhost:8000/docs
-- Health check: http://localhost:8000/health → `{"status": "ok", "service": "wemail-backend"}`
+On startup the app creates `backend/wemail.db` (SQLite, git-ignored) and seeds two synthetic
+accounts. An older `wemail.db` without the `emails.processed` column is upgraded automatically.
+Delete the file to reset to a clean state.
 
-## Configuration
-- `FRONTEND_ORIGINS` — comma-separated CORS origins allowed to call the API
-  (default: `http://localhost:5173,http://127.0.0.1:5173`).
+## Accounts (synthetic, local only)
+| Role     | Email                 | Password      |
+|----------|-----------------------|---------------|
+| attacker | attacker@wemail.com   | attacker123   |
+| target   | target@wemail.com     | target123     |
+
+## Configuration (environment variables)
+`SECRET_KEY` (login tokens), `AGENT_TOKEN` (the agent process, see below), `FRONTEND_ORIGINS`,
+`DATABASE_URL`, `TOKEN_TTL_MINUTES`. Defaults work for local use; a warning is logged at startup
+while the development defaults are in use.
+
+## API
+See [../docs/API.md](../docs/API.md). Interactive docs while running: http://localhost:8000/docs
 
 ## Layout
 ```
-backend/
-  app/
-    __init__.py
-    config.py    # env-driven settings (CORS origins)
-    main.py      # FastAPI app, CORS, /health
-  requirements.txt
+app/
+  main.py        app, CORS, routers, startup seed
+  config.py      env settings and size limits
+  database.py    engine and session
+  models.py      User, Email
+  crud.py        the only data-access layer (authorization lives here)
+  security.py    bcrypt, JWT, current-user dependency
+  seed.py        tables, two accounts, sample mail
+  routers/
+    auth.py      login, logout, me
+    mail.py      the logged-in user's mailbox
+    agent.py     the narrow API the local AI agent uses (AGENT_TOKEN)
 ```
 
 ## Accounts & login (issue #2)

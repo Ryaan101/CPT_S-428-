@@ -54,6 +54,8 @@ class Email(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Set once the local AI agent has handled this email (used only by the agent API).
+    processed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Soft-delete per side so each account manages its own copy independently.
     deleted_by_sender: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -1,0 +1,6 @@
+# Everything needed to run the backend, the agent, the harness and the tests.
+# Run from the repo root:  pip install -r requirements.txt
+-r backend/requirements.txt
+httpx==0.27.2        # used by the agent's HTTP client and FastAPI's TestClient
+ollama==0.4.5        # only needed for --backend ollama; the mock backends do not use it
+pytest==8.3.4
