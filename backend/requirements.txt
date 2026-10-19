@@ -2,8 +2,8 @@
 # bcrypt is pinned below 4.1 on purpose: passlib 1.7.4 is incompatible with newer bcrypt.
 fastapi==0.115.6
 uvicorn==0.32.1
-pydantic==2.10.4
-SQLAlchemy==2.0.36
+pydantic==2.12.5
+SQLAlchemy==2.0.55
 passlib==1.7.4
 bcrypt==4.0.1
 PyJWT==2.9.0

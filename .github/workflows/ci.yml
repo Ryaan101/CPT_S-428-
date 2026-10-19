@@ -3,10 +3,13 @@ on: [push, pull_request]
 jobs:
   python:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
+        with: { python-version: "${{ matrix.python-version }}" }
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
       - run: python -m harness.run_trials --backend mock-refuse --n 3
