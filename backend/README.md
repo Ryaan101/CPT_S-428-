@@ -10,7 +10,7 @@ accounts only (`attacker`, `target`); synthetic data only; no public exposure.
 
 ```bash
 cd backend
-python3 -m venv .venv
+python3 -m venv .venv              # Windows: use py if python3 doesn't work
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
