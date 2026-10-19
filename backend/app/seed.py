@@ -11,6 +11,8 @@ using DEFAULT_PASSWORDS, filling them in if they are not already set.
 """
 from datetime import date, datetime
 
+from sqlalchemy import inspect, text
+
 from .crud import _get_user_by_role
 from .database import Base, SessionLocal, engine
 from .models import Email, User
@@ -26,8 +28,23 @@ DEFAULT_PASSWORDS = {"attacker": "attacker123", "target": "target123"}
 
 
 def init_db() -> None:
-    """Create all tables if they do not exist."""
+    """Create all tables if they do not exist, and add columns added since."""
     Base.metadata.create_all(bind=engine)
+    _ensure_processed_column()
+
+
+def _ensure_processed_column() -> None:
+    """Add emails.processed to a DB created before the agent existed.
+
+    create_all() never alters an existing table, so a teammate's old wemail.db
+    would otherwise crash. Existing rows predate the agent, so they are marked
+    processed and the agent will not answer old mail.
+    """
+    cols = {c["name"] for c in inspect(engine).get_columns("emails")}
+    if "processed" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE emails ADD COLUMN processed BOOLEAN NOT NULL DEFAULT 0"))
+            conn.execute(text("UPDATE emails SET processed = 1"))
 
 
 def ensure_passwords(db) -> None:
@@ -87,6 +104,7 @@ def seed() -> None:
                 is_html=False,
                 created_at=datetime(2026, 10, 15, 9, 0, 0),
                 is_read=False,
+                processed=True,
             ),
             Email(
                 sender_id=target.id,
@@ -96,6 +114,7 @@ def seed() -> None:
                 is_html=False,
                 created_at=datetime(2026, 10, 15, 9, 30, 0),
                 is_read=True,
+                processed=True,
             ),
             Email(
                 sender_id=attacker.id,
@@ -106,6 +125,7 @@ def seed() -> None:
                 is_html=True,
                 created_at=datetime(2026, 10, 16, 14, 0, 0),
                 is_read=False,
+                processed=True,
             ),
         ]
         db.add_all(samples)

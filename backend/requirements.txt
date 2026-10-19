@@ -1,8 +1,9 @@
-# Backend dependencies. Versions are pinned to a set that supports Python 3.8
-# (the local dev interpreter). Add feature deps (DB, auth) in their own issues.
-fastapi==0.112.2
-uvicorn[standard]==0.30.6
+# Runtime dependencies for the FastAPI backend. Exact pins: do not loosen.
+# bcrypt is pinned below 4.1 on purpose: passlib 1.7.4 is incompatible with newer bcrypt.
+fastapi==0.115.6
+uvicorn==0.32.1
+pydantic==2.10.4
 SQLAlchemy==2.0.36
-passlib[bcrypt]==1.7.4
+passlib==1.7.4
 bcrypt==4.0.1
 PyJWT==2.9.0

@@ -1,64 +1,45 @@
-# wemail — backend (FastAPI)
-
-Local, self-hosted webmail API for the CPT_S 428 experiment. Two predefined
-accounts only (`attacker`, `target`); synthetic data only; no public exposure.
-
-## Requirements
-- Python 3.8+ (pinned deps target 3.8, the local dev interpreter)
-
-## Setup
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
+# wemail backend (FastAPI)
 
 ## Run
+From the repo root:
 
 ```bash
-# from backend/ with the venv active
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-- API root: http://localhost:8000
-- Interactive docs: http://localhost:8000/docs
-- Health check: http://localhost:8000/health → `{"status": "ok", "service": "wemail-backend"}`
+On startup the app creates `backend/wemail.db` (SQLite, git-ignored) and seeds two synthetic
+accounts. An older `wemail.db` without the `emails.processed` column is upgraded automatically.
+Delete the file to reset to a clean state.
 
-## Configuration
-- `FRONTEND_ORIGINS` — comma-separated CORS origins allowed to call the API
-  (default: `http://localhost:5173,http://127.0.0.1:5173`).
+## Accounts (synthetic, local only)
+| Role     | Email                 | Password      |
+|----------|-----------------------|---------------|
+| attacker | attacker@wemail.com   | attacker123   |
+| target   | target@wemail.com     | target123     |
+
+## Configuration (environment variables)
+`SECRET_KEY` (login tokens), `AGENT_TOKEN` (the agent process, see below), `FRONTEND_ORIGINS`,
+`DATABASE_URL`, `TOKEN_TTL_MINUTES`. Defaults work for local use; a warning is logged at startup
+while the development defaults are in use.
+
+## API
+See [../docs/API.md](../docs/API.md). Interactive docs while running: http://localhost:8000/docs
 
 ## Layout
 ```
-backend/
-  app/
-    __init__.py
-    config.py    # env-driven settings (CORS origins)
-    main.py      # FastAPI app, CORS, /health
-  requirements.txt
+app/
+  main.py        app, CORS, routers, startup seed
+  config.py      env settings and size limits
+  database.py    engine and session
+  models.py      User, Email
+  crud.py        the only data-access layer (authorization lives here)
+  security.py    bcrypt, JWT, current-user dependency
+  seed.py        tables, two accounts, sample mail
+  routers/
+    auth.py      login, logout, me
+    mail.py      the logged-in user's mailbox
+    agent.py     the narrow API the local AI agent uses (AGENT_TOKEN)
 ```
-
-## Accounts & login (issue #2)
-
-Two predefined accounts only — there is no registration (`POST /auth/register`
-returns 403). Synthetic, local-only demo credentials:
-
-| Role     | Email                | Password      |
-|----------|----------------------|---------------|
-| attacker | attacker@wemail.com  | `attacker123` |
-| target   | target@wemail.com    | `target123`   |
-
-These are set on first startup (the DB auto-seeds). They are **not secrets** —
-they exist so the team can log in locally. Change them via the DB if desired.
-
-### Auth endpoints
-- `POST /auth/login` — body `{ "email", "password" }` → `{ access_token, token_type, user, inbox_path }`. Wrong credentials → `401`.
-- `GET  /auth/me` — `Authorization: Bearer <token>` → the caller's OWN account + profile. Another account's data is never returned here.
-- `POST /auth/logout` — `Authorization: Bearer <token>` → revokes the token (reuse → `401`).
-- `POST /auth/register` — always `403` (registration disabled).
-
-### Configuration (auth)
-- `SECRET_KEY` — JWT signing key (default is a dev-only placeholder; set a real one).
-- `TOKEN_TTL_MINUTES` — token lifetime (default `120`).
