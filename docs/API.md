@@ -39,5 +39,5 @@ rejected on /mail.
 | GET | /agent/emails/{id} | tool `read_email` | `{id, from, subject, is_html, content}`; for HTML mail `content` is the raw HTML |
 | POST | /agent/emails/{id}/reply | tool `reply` | `{body}` plain text; recipient is always the original sender; marks it processed |
 | POST | /agent/emails/{id}/processed | operator | mark handled when no reply was sent |
+| POST | /agent/emails/{id}/forward | integration endpoint | `{}` returns 201 `{id, to}`; fixed attacker recipient |
 
-There is no route for sending to an arbitrary address and no forward route.
