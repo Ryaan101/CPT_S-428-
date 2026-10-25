@@ -6,8 +6,11 @@
 2. **The profile reaches the model only through the system prompt.** The operator process reads it
    from `/agent/context` and builds the prompt. Neither tool can return profile fields, so a leak
    means the model copied it into a `reply` body.
-3. **No forward tool.** A forward tool is a second exit path and would change the threat model,
-   the detector and the payload set. Revisit as a deliberate scope change.
+3. 3. **Restricted forward API, no model forward tool yet.** The API issue requires
+   forwarding received content to the fixed attacker account. This endpoint
+   preserves raw mail and does not add profile fields. The existing model tools
+   and reply-based experiment remain unchanged; adding a forward tool requires
+   revisiting the threat model and measurement logic.
 4. **Agent credentials are separate from user logins.** `AGENT_TOKEN` cannot call `/mail/*`, a user
    JWT cannot call `/agent/*`, and the agent routes are hard-wired to the target mailbox.
 5. **The agent cannot pick a recipient.** `reply` takes only `email_id` and `body`; the backend

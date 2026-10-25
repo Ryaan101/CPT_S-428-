@@ -62,12 +62,178 @@ def test_agent_cannot_touch_mail_it_did_not_receive(client, target, agent):
     assert client.get("/agent/emails/9999", headers=agent).status_code == 404
 
 
-def test_no_forward_or_arbitrary_send_route_for_agent(client, agent):
-    assert client.post("/agent/send", json={"to": "x@y.z", "body": "b"}, headers=agent).status_code in (404, 405)
-    assert client.post("/agent/emails/1/forward", json={}, headers=agent).status_code in (404, 405)
-
+def test_no_arbitrary_send_route_for_agent(client, agent):
+    response = client.post(
+        "/agent/send",
+        json={"to": "x@y.z", "body": "b"},
+        headers=agent,
+    )
+    assert response.status_code in (404, 405)
 
 def test_mark_processed(client, attacker, agent):
     eid = send(client, attacker).json()["id"]
     assert client.post(f"/agent/emails/{eid}/processed", headers=agent).status_code == 204
     assert client.get("/agent/emails", headers=agent).json() == []
+
+def test_forward_preserves_html_and_keeps_pending(client, attacker, agent):
+    eid = send(
+        client,
+        attacker,
+        subject="Original",
+        body="",
+        body_html=TRICKY_HTML,
+    ).json()["id"]
+
+    response = client.post(
+        f"/agent/emails/{eid}/forward",
+        json={},
+        headers=agent,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["to"] == ATTACKER_EMAIL
+
+    mail = client.get(
+        f"/mail/{response.json()['id']}",
+        headers=attacker,
+    ).json()
+
+    assert mail["subject"] == "Fwd: Original"
+    assert mail["body_html"] == TRICKY_HTML
+    assert mail["sender"]["email_address"] == TARGET_EMAIL
+    assert "birthdate" not in mail["sender"]
+
+    pending = client.get("/agent/emails", headers=agent).json()
+    assert eid in [email["id"] for email in pending]
+
+
+def test_forward_plain_and_maximum_subject(client, attacker, agent):
+    eid = send(
+        client,
+        attacker,
+        subject="x" * 255,
+        body="plain content",
+    ).json()["id"]
+
+    response = client.post(
+        f"/agent/emails/{eid}/forward",
+        json={},
+        headers=agent,
+    )
+
+    assert response.status_code == 201
+
+    mail = client.get(
+        f"/mail/{response.json()['id']}",
+        headers=attacker,
+    ).json()
+
+    assert mail["body"] == "plain content"
+    assert mail["body_html"] is None
+    assert len(mail["subject"]) == 255
+
+
+def test_agent_mutations_reject_user_tokens(client, attacker, target):
+    eid = send(client, attacker).json()["id"]
+
+    operations = [
+        ("reply", {"body": "x"}),
+        ("forward", {}),
+        ("processed", {}),
+    ]
+
+    credentials = [
+        {},
+        attacker,
+        target,
+        {"Authorization": "Bearer wrong"},
+    ]
+
+    for suffix, body in operations:
+        for headers in credentials:
+            response = client.post(
+                f"/agent/emails/{eid}/{suffix}",
+                json=body,
+                headers=headers,
+            )
+            assert response.status_code in (401, 403)
+
+
+def test_forward_rejects_wrong_mailbox_deleted_missing_and_overrides(
+    client, attacker, target, agent
+):
+    sent_id = send(
+        client,
+        target,
+        to=ATTACKER_EMAIL,
+    ).json()["id"]
+
+    eid = send(client, attacker).json()["id"]
+
+    response = client.post(
+        f"/agent/emails/{eid}/forward",
+        json={"to": "outside@example.com"},
+        headers=agent,
+    )
+    assert response.status_code == 422
+
+    client.delete(f"/mail/{eid}", headers=target)
+
+    for bad_id in (sent_id, eid, 999999):
+        response = client.post(
+            f"/agent/emails/{bad_id}/forward",
+            json={},
+            headers=agent,
+        )
+        assert response.status_code == 404
+
+
+def test_agent_token_not_a_user_session(client, agent):
+    response = client.get("/mail/inbox", headers=agent)
+    assert response.status_code == 401
+
+
+def test_operation_logs_exclude_message_contents(
+    client, attacker, agent, caplog
+):
+    import logging
+
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+
+    eid = send(
+        client,
+        attacker,
+        subject="SECRET SUBJECT",
+        body="SECRET BODY",
+    ).json()["id"]
+
+    client.get("/agent/emails", headers=agent)
+    client.get(f"/agent/emails/{eid}", headers=agent)
+
+    client.post(
+        f"/agent/emails/{eid}/forward",
+        json={},
+        headers=agent,
+    )
+
+    client.post(
+        f"/agent/emails/{eid}/reply",
+        json={"body": "SECRET REPLY"},
+        headers=agent,
+    )
+
+    client.post(
+        f"/agent/emails/{eid}/processed",
+        headers=agent,
+    )
+
+    for operation in ("list", "read", "forward", "reply", "processed"):
+        assert f"operation={operation}" in caplog.text
+
+    for private in (
+        "SECRET SUBJECT",
+        "SECRET BODY",
+        "SECRET REPLY",
+        agent["Authorization"],
+    ):
+        assert private not in caplog.text
