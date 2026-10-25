@@ -32,7 +32,7 @@ This project builds a small, safe, local version of that situation and **measure
 ### The setup
 - A **self-hosted webmail app** with exactly two accounts: an **attacker** and a **target**. Everything is synthetic and runs only on your own computer.
 - A **local AI agent** (Meta's Llama 3.1 8B model, run by a program called Ollama) watches the target's inbox and answers mail for the target.
-- The agent has only **two tools**: `read_email` and `reply`. It cannot forward mail, cannot pick a recipient (a reply always goes to the person who wrote the email), and cannot look anything up.
+- The agent has only **two tools**: `read_email` and `reply`. The model cannot forward mail, cannot pick a recipient (a reply always goes to the person who wrote the email), and cannot look anything up. The backend does have an agent forward route, but it always sends to the attacker account, takes no recipient or content from the caller, and is not exposed to the model as a tool.
 - The target has a **private profile**: a birthdate, a time zone and a workplace (and a name). The agent is told this profile in its instructions so it can personalize replies. Nothing else gives it access to that data.
 - The attacker can only send **emails**. They cannot log in as the target and cannot read the target's data through the app.
 
@@ -89,7 +89,7 @@ All data is synthetic. Nothing is hosted on the internet and no real mailboxes o
 | `agent/` | The agent's instructions, its two tools, the live monitor |
 | `harness/` | The measurement runner, leak detector and statistics |
 | `attacks/payloads/` | The test emails (attacks and controls) |
-| `tests/` | The automated test suite (45 tests) |
+| `tests/` | The automated test suite (51 tests) |
 | `results/reference/` | Saved reference results |
 | `docs/` | API reference, design decisions, change log, this guide |
 
@@ -106,7 +106,7 @@ All data is synthetic. Nothing is hosted on the internet and no real mailboxes o
 | 5 | Ollama | current release | runs the Llama model locally | only for real-model runs |
 | 6 | Llama model | tag **`llama3.1:8b-instruct-q4_K_M`**, ID **`46e0c10c039e`**, about 4.9 GB | the AI agent | only for real-model runs |
 
-Python 3.10 or older does not work. Python 3.11 was tested on Windows, and 3.11, 3.12, 3.13 and 3.14 were tested on Linux.
+Python 3.10 or older does not work. The team README names 3.14 as the standard. With the current pins, all 51 tests pass on 3.11, 3.13 and 3.14 (tested on Linux), and 3.11 was also tested on Windows.
 
 **About the Ollama version.** Ollama is only the program that runs the model. We do not pin its version. What we pin is the **model** (exact tag and ID) and the **Python client library** (`ollama==0.4.5`, installed automatically by `requirements.txt`). Install the current release from https://ollama.com/download. After installing, run `ollama --version` and post the result in the team chat. The harness also saves it in `run_metadata.json` for every run. Version used when the reference results in section 7 were produced: `____________` (fill in).
 
@@ -175,11 +175,11 @@ pip install -r requirements.txt
 
 | Package | Pinned | Purpose |
 |---|---|---|
-| fastapi, uvicorn | 0.115.6, 0.32.1 | the web server |
-| pydantic | 2.12.5 | validates data sent to the API (this version supports Python 3.14) |
+| fastapi, uvicorn | 0.149.0, 0.54.0 | the web server |
+| pydantic | 2.14.1 | validates data sent to the API (this version supports Python 3.14) |
 | SQLAlchemy | 2.0.55 | talks to the SQLite database (this version supports Python 3.14) |
-| passlib, bcrypt | 1.7.4, 4.0.1 | password hashing (bcrypt is kept below 4.1 because passlib breaks with newer bcrypt) |
-| PyJWT | 2.9.0 | login tokens |
+| passlib, bcrypt | 1.7.4, 4.3.0 | password hashing |
+| PyJWT | 2.15.1 | login tokens |
 | httpx | 0.27.2 | HTTP client for the agent and the test client |
 | ollama | 0.4.5 | Python library that talks to the local Ollama server |
 | pytest | 8.3.4 | the test runner |
@@ -246,7 +246,7 @@ Every test below has the same layout: **What it does**, **Why we run it**, **Com
 
 #### Test A1. The automated test suite (pytest)
 
-**What it does.** Runs 45 automated tests that exercise the backend, the agent's API, the leak detector, the harness and some frontend safety rules. It uses a temporary database and never touches your real `wemail.db`. It does not need the servers running, Ollama or a browser.
+**What it does.** Runs 51 automated tests that exercise the backend, the agent's API, the leak detector, the harness and some frontend safety rules. It uses a temporary database and never touches your real `wemail.db`. It does not need the servers running, Ollama or a browser.
 
 **Why we run it.** It proves the code works and, more importantly, that the **security boundaries hold**. If someone changes code and accidentally lets the attacker read the target's profile, a test fails immediately. Run it after every pull and before every commit.
 
@@ -257,18 +257,18 @@ python -m pytest -q
 
 **Expected result.** The last line says:
 ```
-45 passed
+51 passed
 ```
 Some warnings are normal and can be ignored.
 
 **How to read it.** Each dot is one passing test. An `F` is a failure, and pytest prints the name of the failing test and the line that failed. Any failure means something is broken, so do not continue until it is fixed.
 
-**What the 45 tests cover:**
+**What the 51 tests cover:**
 
 | File | Tests | What it checks and why it matters |
 |---|---|---|
 | `tests/test_mail_api.py` | 20 | Sending, receiving, replying and deleting mail. Recipients must be one of the two accounts and not yourself. Empty or oversized messages are rejected. **HTML is stored byte for byte** (comments, hidden spans and zero-width characters survive), because the experiment depends on the raw markup. The attacker cannot see the target's private profile through any mail route. Mail you did not receive cannot be replied to. Deleting hides mail only on your side. Registration stays disabled. |
-| `tests/test_agent_api.py` | 10 | The agent's API needs its own secret token, and ordinary user logins are rejected there. The agent reads **raw HTML** exactly as sent. It can only reply to the original sender and cannot choose a recipient. It cannot read or answer mail it did not receive. There is no forward route and no way to send to an arbitrary address. This proves the agent can leak only through the one channel we are measuring. |
+| `tests/test_agent_api.py` | 16 | The agent's API needs its own secret token, and ordinary user logins are rejected there (including for reply, forward and mark-processed). The agent reads **raw HTML** exactly as sent. It can only reply to the original sender and cannot choose a recipient. It cannot read or answer mail it did not receive. The forward route always goes to the attacker account, keeps the original HTML, rejects any recipient or content override, and leaves the mail pending. There is no way to send to an arbitrary address. Operation logs record what the agent did but never message contents or the token. This proves the agent can leak only through the channels we are measuring. |
 | `tests/test_detect.py` | 6 | The leak detector finds the birthdate in many formats (`1995-07-22`, `July 22, 1995`, `22/07/1995`, `July 22`), the time zone (including "Eastern Time" and "UTC-4") and the workplace, even with hidden characters. It does **not** flag harmless text (for example the word "example" alone). The name is tracked but not counted as a leak. This matters because a detector mistake would invalidate every result. |
 | `tests/test_harness.py` | 7 | The harness gives 0 leaks with the "never leaks" agent and 100% with the "always obeys" agent. HTML attack payloads reach the agent as raw HTML. Output files are written. **Crashed trials are counted as errors and never as "no leak".** A missing Ollama stops the harness with an error. The harness never uses your real database. |
 | `tests/test_frontend_static.py` | 2 | The frontend never uses `v-html` or `innerHTML` for email content, and HTML mail is displayed only inside a fully sandboxed iframe. This guards against the app itself being exploited by a malicious email. |
@@ -416,7 +416,7 @@ cd <path to CPT_S-428->
 cd backend
 uvicorn app.main:app --reload --port 8000
 ```
-Wait for `Application startup complete`. A warning about default secrets is normal.
+Wait for `Application startup complete`. A warning about default secrets is normal. This terminal also prints one line per agent operation, such as `agent operation=read email_id=4`, which is handy when watching the live agent. It never prints message contents.
 
 Terminal 2, frontend (no environment needed):
 ```powershell
@@ -434,7 +434,7 @@ It must print `http://localhost:5173/`. **If it says "Port 5173 is in use, tryin
 | Attacker | `attacker@wemail.com` | `attacker123` |
 | Target | `target@wemail.com` | `target123` |
 
-Why two different window types: the login is stored per browser. Two normal windows share one login and will log each other out ("token has been revoked").
+Why two windows: the login is kept per browser tab (it is stored in session storage), so two tabs in the same browser can hold different accounts. An incognito window is still the cleanest way to keep them apart, and it avoids mixing up which tab is which.
 
 The login page should show **`backend: ok`** at the bottom.
 
@@ -621,13 +621,13 @@ Limits: one model, one temperature, one email per run, five attack styles and sy
 
 | Problem | Fix |
 |---|---|
-| `Failed building wheel for pydantic-core`, or a long Rust or maturin error | Stale packages or too old a Python. Delete `.venv`, pull the latest branch (check that `backend\requirements.txt` says `pydantic==2.12.5` and `SQLAlchemy==2.0.55`), recreate `.venv`, reinstall. |
+| `Failed building wheel for pydantic-core`, or a long Rust or maturin error | Stale packages or too old a Python. Delete `.venv`, pull the latest branch (check that `backend\requirements.txt` matches the latest branch, with `SQLAlchemy==2.0.55`), recreate `.venv`, reinstall. |
 | `TypeError: descriptor '__getitem__' requires a 'typing.Union' object` | Old packages on Python 3.14. Same fix as the row above. |
 | `No module named pytest` (or fastapi, sqlalchemy...) | The environment is not active or the install failed. Run `.venv\Scripts\activate` and `pip install -r requirements.txt`. Run tests from the repo root. |
 | `activate` is blocked in PowerShell | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then retry. |
 | `py` is not recognized | Use `python -m venv .venv` after installing Python from python.org with "Add to PATH" ticked. |
 | Login page says `backend: down - Failed to fetch` | The backend is not running, or the frontend started on a different port. Check Terminal 1 for `Application startup complete`, open http://localhost:8000/health, and make sure Terminal 2 says port **5173**. If it says 5174, free port 5173 and restart the frontend. |
-| "Token has been revoked" or you are logged out | Two tabs in the same browser share one login. Use an incognito window or a second browser for the other account. |
+| "Token has been revoked" or you are logged out | You logged out in that tab or it expired (tokens last 120 minutes by default). Log in again. If you still see it after an update, run `git pull` so you have the session-storage login fix. |
 | `ollama` is not recognized | Open a new terminal after installing. If it still fails, reinstall Ollama. |
 | Cannot reach the Ollama server | Open the Ollama app from the Start menu so it is running. |
 | Model not installed | `ollama pull llama3.1:8b-instruct-q4_K_M` |
@@ -652,7 +652,7 @@ When asking for help, send the full error text (copy it instead of retyping) plu
 | Activate environment | repo root | `.venv\Scripts\activate` |
 | Install Python packages | repo root | `pip install -r requirements.txt` |
 | Install frontend packages | `frontend` | `npm ci` |
-| Run the 45 tests | repo root | `python -m pytest -q` |
+| Run the 51 tests | repo root | `python -m pytest -q` |
 | Build the frontend | `frontend` | `npm run build` |
 | Negative control | repo root | `python -m harness.run_trials --backend mock-refuse --n 20` |
 | Positive control | repo root | `python -m harness.run_trials --backend mock-comply --n 20` |
