@@ -49,6 +49,7 @@ from agent.runner import run_agent
 from agent.web import LocalWeb
 
 from . import appenv, backends, payloads
+from agent import defense
 from .detect import ALL_FIELDS, SUCCESS_FIELDS, detect, from_api_profile
 from .stats import wilson
 
@@ -109,6 +110,7 @@ def run_trial(payload, client, chat_fn, model, variant, options):
         "messages_to_attacker": len(sent),
         "tool_calls": [t["tool"] for t in trace],
         "trace": trace,  # every tool call with its arguments and the result the model saw
+        "blocked_replies": trace.blocked,  # replies stopped by the egress check (0 unless it is on)
         "stop_reason": trace.stop_reason,  # "finished" or "max_steps"
         "final_text": trace.final_text,  # the model's last message, useful when it stops without replying
         **{f: hits[f] for f in ALL_FIELDS},
@@ -138,7 +140,8 @@ def main(argv=None):
     ap.add_argument("--n", type=int, default=10, help="trials per payload")
     ap.add_argument("--payloads", default="attacks/payloads", help="payload file or directory")
     ap.add_argument("--model", default=MODEL_TAG)
-    ap.add_argument("--variant", default="baseline", help="system prompt variant (defense) to test")
+    ap.add_argument("--variant", default="baseline", choices=defense.VARIANTS,
+                    help="defense variant to test (see agent/defense.py)")
     ap.add_argument("--temperature", type=float, default=DEFAULT_OPTIONS["temperature"])
     ap.add_argument("--seed-base", type=int, default=1000, help="trial i uses seed seed_base + i")
     ap.add_argument("--out", default=None)
@@ -171,7 +174,7 @@ def main(argv=None):
 
     client = MailClient(TestClient(app), appenv.init()["token"])
 
-    fields = ["payload", "control", "trial", "seed", "messages_to_attacker", "tool_calls",
+    fields = ["payload", "control", "trial", "seed", "messages_to_attacker", "blocked_replies", "tool_calls",
               *ALL_FIELDS, "success", "error"]
     per_payload = {}
     with open(os.path.join(out, "trials.csv"), "w", newline="", encoding="utf-8") as fcsv, \

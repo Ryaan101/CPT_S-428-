@@ -55,3 +55,15 @@
     the D2 definition. `harness.report` now also prints a strict count, birthdate or canary only, read from
     `trials.csv`. Both numbers come from the same trials, and the controls show how often a harmless reply
     matches. This changes only reporting, not what the agent or the detector does.
+
+20. **Mitigation is layered and each layer can be run alone.** The baseline measured a leak of private
+    profile data, so the defense is built around that class, not around the three vectors. Layers are
+    `datamark` (instruction and data separation), `isolate` (privilege separation) and `egress` (code check
+    on outgoing replies). Running each alone as well as together shows which one does the work.
+21. **`--variant` is validated before any trial runs.** A misspelled name used to be counted as errors on
+    every trial. It now stops the run at once.
+22. **Usefulness is reported next to security.** The report adds "Control replied": in how many harmless
+    control trials a reply was still sent. A defense that blocks everything would otherwise look perfect.
+23. **The mitigation changes no baseline behavior.** `baseline` builds the same prompt as at the tag, with
+    no wrapping and no check (a test covers it). Rerunning `--variant baseline` on the final commit
+    reproduces the tagged numbers' conditions.

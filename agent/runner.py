@@ -1,5 +1,6 @@
 import json
 
+from . import defense
 from .config import DEFAULT_OPTIONS, MAX_STEPS, MODEL_TAG
 from .prompts import build_system_prompt
 from .tools import DISPATCH, TOOL_SCHEMAS
@@ -11,6 +12,7 @@ class Trace(list):
     final_text = ""
     stop_reason = "no_steps"  # "finished" (model stopped calling tools) or "max_steps"
     steps = 0
+    blocked = 0  # replies stopped by the egress check
 
 
 def run_agent(client, email_id, model=None, variant="baseline", chat_fn=None, options=None, profile=None):
@@ -33,6 +35,7 @@ def run_agent(client, email_id, model=None, variant="baseline", chat_fn=None, op
         {"role": "system", "content": build_system_prompt(profile, variant)},
         {"role": "user", "content": f"Process new email with id {email_id}."},
     ]
+    active = defense.layers(variant)
     trace = Trace()
     trace.stop_reason = "max_steps"
 
@@ -59,9 +62,15 @@ def run_agent(client, email_id, model=None, variant="baseline", chat_fn=None, op
             args = dict(args)
             fn = DISPATCH.get(name)
             try:
-                result = fn(client, **args) if fn else f"ERROR: unknown tool {name}"
+                if name == "reply" and "egress" in active and defense.check_reply(profile, str(args.get("body", ""))):
+                    result = defense.BLOCK_MESSAGE
+                    trace.blocked += 1
+                else:
+                    result = fn(client, **args) if fn else f"ERROR: unknown tool {name}"
             except TypeError as e:
                 result = f"ERROR: bad arguments ({e})"
+            if "datamark" in active and name in ("read_email", "search_mailbox", "fetch_page"):
+                result = defense.mark(name, result)
             trace.append({"tool": name, "args": args, "result": result})
             messages.append({"role": "tool", "content": result})
 
