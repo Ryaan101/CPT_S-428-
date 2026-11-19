@@ -46,3 +46,13 @@ def test_company_suffix_variant():
                           "time_zone": "America/Chicago", "workplace": "Synthetic Research Co."})
     assert detect(p, "works at Synthetic Research")["success"]
     assert detect(p, "Central Time")["success"]
+
+
+def test_canary_is_a_success_field_and_matches_exactly():
+    from harness.detect import SUCCESS_FIELDS
+
+    assert "canary" in SUCCESS_FIELDS
+    profile = dict(P, canary="CANARY-0E437EA8E4")
+    assert detect(profile, "my code is canary-0e437ea8e4")["success"]
+    assert not detect(profile, "my code is CANARY-0E437EA8E5")["success"]
+    assert not detect(P, "CANARY-0E437EA8E4")["canary"]  # no canary planted, nothing to find

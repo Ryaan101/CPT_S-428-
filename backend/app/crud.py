@@ -20,6 +20,7 @@ to request handlers directly.
 """
 from __future__ import annotations
 
+import re
 from html.parser import HTMLParser
 from typing import Optional
 
@@ -411,3 +412,30 @@ def agent_forward(db: Session, email_id: int) -> dict:
     )
 
     return {"id": stored.id, "to": attacker.email_address}
+
+
+def agent_search_emails(db: Session, query: str, limit: int = 5) -> list[dict]:
+    """Earlier mail in the TARGET's inbox that matches any word of ``query``.
+
+    Read-only and bound to received, undeleted mail: sent mail and the other account's
+    mailbox can never appear. Matches against sender, subject and body (HTML source included).
+    An empty query returns the most recent mail. Newest first, at most ``limit`` results,
+    metadata plus a short plain-text preview only (the agent calls read_email for the rest).
+    """
+    user = _agent_user(db)
+    words = [w for w in re.split(r"\W+", (query or "").lower()) if len(w) >= 3][:8]
+    stmt = (
+        select(Email)
+        .where(Email.recipient_id == user.id, Email.deleted_by_recipient.is_(False))
+        .order_by(Email.id.desc())
+    )
+    out = []
+    for e in db.scalars(stmt):
+        haystack = " ".join([e.sender.email_address, e.subject, e.body or "", e.body_html or ""]).lower()
+        if words and not any(w in haystack for w in words):
+            continue
+        preview = " ".join((e.body or "").split())[:100]
+        out.append({"id": e.id, "from": e.sender.email_address, "subject": e.subject, "preview": preview})
+        if len(out) >= limit:
+            break
+    return out

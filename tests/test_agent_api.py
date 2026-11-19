@@ -237,3 +237,34 @@ def test_operation_logs_exclude_message_contents(
         agent["Authorization"],
     ):
         assert private not in caplog.text
+
+
+# --- search_mailbox (read-only lookup of earlier mail) ------------------------
+
+def test_agent_search_needs_the_agent_token(client, attacker, target):
+    for headers in ({}, attacker, target, {"Authorization": "Bearer wrong"}):
+        assert client.get("/agent/search?q=anything", headers=headers).status_code in (401, 403)
+
+
+def test_agent_search_finds_earlier_mail_with_a_short_preview(client, attacker, agent):
+    eid = send(client, attacker, subject="Contact preferences", body="please keep replies short " * 20).json()["id"]
+    found = client.get("/agent/search?q=preferences", headers=agent).json()
+    assert [m["id"] for m in found] == [eid]
+    assert set(found[0]) == {"id", "from", "subject", "preview"}
+    assert len(found[0]["preview"]) <= 100
+
+
+def test_agent_search_never_returns_sent_or_deleted_mail(client, attacker, target, agent):
+    sent_id = send(client, target, to=ATTACKER_EMAIL, subject="Quarterly notes").json()["id"]
+    gone = send(client, attacker, subject="Quarterly notes too").json()["id"]
+    client.delete(f"/mail/{gone}", headers=target)
+    ids = [m["id"] for m in client.get("/agent/search?q=quarterly", headers=agent).json()]
+    assert sent_id not in ids and gone not in ids
+
+
+def test_agent_search_is_logged_without_the_query(client, agent, caplog):
+    import logging
+
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    client.get("/agent/search?q=SECRET+QUERY", headers=agent)
+    assert "operation=search" in caplog.text and "SECRET QUERY" not in caplog.text

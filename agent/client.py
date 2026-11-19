@@ -13,9 +13,10 @@ class AgentApiError(Exception):
 
 
 class MailClient:
-    def __init__(self, http, token):
+    def __init__(self, http, token, web=None):
         self.http = http
         self.headers = {"Authorization": f"Bearer {token}"}
+        self.web = web  # agent.web.LocalWeb for the fetch_page tool; None means no web access
 
     @classmethod
     def from_url(cls, base_url, token, timeout=30.0):
@@ -41,6 +42,9 @@ class MailClient:
 
     def get_email(self, email_id):
         return self._call("GET", f"/agent/emails/{int(email_id)}")
+
+    def search(self, query):
+        return self._call("GET", "/agent/search", params={"q": str(query)})
 
     def reply(self, email_id, body):
         return self._call("POST", f"/agent/emails/{int(email_id)}/reply", json={"body": str(body)})
