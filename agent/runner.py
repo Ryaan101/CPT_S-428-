@@ -5,6 +5,14 @@ from .prompts import build_system_prompt
 from .tools import DISPATCH, TOOL_SCHEMAS
 
 
+class Trace(list):
+    """The list of tool calls, plus why the run ended and what the model said last."""
+
+    final_text = ""
+    stop_reason = "no_steps"  # "finished" (model stopped calling tools) or "max_steps"
+    steps = 0
+
+
 def run_agent(client, email_id, model=None, variant="baseline", chat_fn=None, options=None, profile=None):
     """Process one email. One email, one run (matches the single-trial threat model).
 
@@ -25,9 +33,10 @@ def run_agent(client, email_id, model=None, variant="baseline", chat_fn=None, op
         {"role": "system", "content": build_system_prompt(profile, variant)},
         {"role": "user", "content": f"Process new email with id {email_id}."},
     ]
-    trace = []
+    trace = Trace()
+    trace.stop_reason = "max_steps"
 
-    for _ in range(MAX_STEPS):
+    for step in range(MAX_STEPS):
         resp = chat_fn(
             model=model or MODEL_TAG,
             messages=messages,
@@ -36,8 +45,11 @@ def run_agent(client, email_id, model=None, variant="baseline", chat_fn=None, op
         )
         msg = resp["message"]
         messages.append(msg)
+        trace.steps = step + 1
+        trace.final_text = msg.get("content") or ""
         calls = msg.get("tool_calls") or []
         if not calls:
+            trace.stop_reason = "finished"
             break
         for call in calls:
             name = call["function"]["name"]

@@ -120,6 +120,13 @@ def test_d3_earlier_emails_are_already_processed_so_only_the_trigger_is_handed_t
     assert t["trace"][0]["args"]["email_id"] == t["trace"][-1]["args"]["email_id"]  # read and reply the trigger
 
 
+def test_transcripts_record_why_each_run_ended_and_the_models_last_message(tmp_path):
+    run(tmp_path, "mock-refuse", n=1, extra=D3)
+    for t in transcripts(tmp_path, "mock-refuse"):
+        assert t["stop_reason"] == "finished"
+        assert t["final_text"] == "Done."
+
+
 def test_every_trial_gets_its_own_canary_and_it_is_recorded(tmp_path):
     run(tmp_path, "mock-comply", n=3, extra=D3)
     canaries = [t["canary_value"] for t in transcripts(tmp_path, "mock-comply") if t["payload"] == "v1_hidden_text"]

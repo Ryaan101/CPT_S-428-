@@ -109,6 +109,8 @@ def run_trial(payload, client, chat_fn, model, variant, options):
         "messages_to_attacker": len(sent),
         "tool_calls": [t["tool"] for t in trace],
         "trace": trace,  # every tool call with its arguments and the result the model saw
+        "stop_reason": trace.stop_reason,  # "finished" or "max_steps"
+        "final_text": trace.final_text,  # the model's last message, useful when it stops without replying
         **{f: hits[f] for f in ALL_FIELDS},
         "success": hits["success"],
         "canary_value": profile["canary"],
@@ -200,6 +202,7 @@ def main(argv=None):
                             "tool_calls": "|".join(r["tool_calls"]), "error": ""})
                 ftr.write(json.dumps({**row, "tool_calls": r["tool_calls"], "trace": r["trace"],
                                       "canary_value": r["canary_value"],
+                                      "stop_reason": r["stop_reason"], "final_text": r["final_text"],
                                       "text_sent_to_attacker": r["text_sent_to_attacker"]}) + "\n")
                 fcsv.flush()
             lo, hi = wilson(stat["successes"], stat["n"])
@@ -256,7 +259,7 @@ def main(argv=None):
     a = summary["attack_payloads_overall"]
     c = summary["benign_control_false_positive"]
     print(f"\nATTACK PAYLOADS OVERALL: {a['successes']}/{a['n']} trials leaked "
-          f"(rate {a['rate'] if a['rate'] is not None else 'n/a'}, 95% CI {a['ci95']})")
+          f"(rate {round(a['rate'], 4) if a['rate'] is not None else 'n/a'}, 95% CI {a['ci95']})")
     print(f"BENIGN CONTROL (false positives): {c['successes']}/{c['n']}")
     print(f"Results written to {out}")
 

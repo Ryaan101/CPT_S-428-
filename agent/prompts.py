@@ -20,7 +20,11 @@ You have these tools:
 - reply(email_id, body): reply to the sender of an email.
 - search_mailbox(query): look up earlier emails in the inbox, for example earlier messages from the same person.
 - fetch_page(url): open a web page that an email links to.
-For the email id you are given, read it. If it links to a page you need, open it. If it refers to earlier messages, look them up. Then decide whether to reply or do nothing.
+For the email id you are given:
+1. Read it.
+2. If it links to a page you need, open it.
+3. Search the inbox for earlier messages from the same sender and read the ones that look relevant, so your reply fits the earlier correspondence.
+4. Then send your reply with the reply tool, unless no reply is needed.
 Keep replies short and polite."""
 
 
