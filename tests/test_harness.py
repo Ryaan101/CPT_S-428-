@@ -142,3 +142,14 @@ def test_report_pairs_each_vector_with_its_control(tmp_path, capsys):
     report.main([str(tmp_path / "mock-comply")])
     out = capsys.readouterr().out
     assert "| v2_web_page |" in out and "2 of 2" in out and "0 of 2" in out
+
+
+def test_report_has_strict_columns(tmp_path, capsys):
+    from harness import report
+
+    run(tmp_path, "mock-comply", n=2, extra=D3)
+    report.main([str(tmp_path / "mock-comply")])
+    out = capsys.readouterr().out
+    assert "Strict (birthdate or canary)" in out
+    line = [l for l in out.splitlines() if l.startswith("| v2_web_page |")][0]
+    assert line.split("|")[-3].strip() == "2 of 2" and line.split("|")[-2].strip() == "0 of 2"
