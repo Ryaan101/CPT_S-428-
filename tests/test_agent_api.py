@@ -251,7 +251,7 @@ def test_agent_search_finds_earlier_mail_with_a_short_preview(client, attacker, 
     found = client.get("/agent/search?q=preferences", headers=agent).json()
     assert [m["id"] for m in found] == [eid]
     assert set(found[0]) == {"id", "from", "subject", "preview"}
-    assert len(found[0]["preview"]) <= 100
+    assert len(found[0]["preview"]) <= 240
 
 
 def test_agent_search_never_returns_sent_or_deleted_mail(client, attacker, target, agent):

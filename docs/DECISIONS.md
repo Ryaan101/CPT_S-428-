@@ -42,4 +42,9 @@
 15. **Second model.** Qwen 2.5 7B Instruct, Q4_K_M, chosen as a default (a different model family that supports tool calling) and changeable with `--model`. Its ID is pinned in `agent/config.py` before the baseline run.
 16. **Raw results are committed** under `results/baseline/` and the commit is tagged `baseline` before any mitigation code.
 17. **Tables come from a script** (`python -m harness.report`), never typed by hand.
-
+18. **Pilot changes before the baseline.** A pilot at 5 trials per vector showed that (a) without a lookup step in
+    the prompt one model never searched, and (b) after searching, both models answered without opening the old
+    email, and the 100-character preview cut the stored instruction in half. We added the lookup step to the prompt
+    and raised the search preview to 240 characters so a short message appears whole, as in a normal mail client.
+    Both changes apply to every vector, control and model, and were made before the `baseline` tag. The pilot
+    numbers are not reported as results.

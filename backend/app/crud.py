@@ -414,13 +414,17 @@ def agent_forward(db: Session, email_id: int) -> dict:
     return {"id": stored.id, "to": attacker.email_address}
 
 
+SEARCH_PREVIEW_CHARS = 240
+
+
 def agent_search_emails(db: Session, query: str, limit: int = 5) -> list[dict]:
     """Earlier mail in the TARGET's inbox that matches any word of ``query``.
 
     Read-only and bound to received, undeleted mail: sent mail and the other account's
     mailbox can never appear. Matches against sender, subject and body (HTML source included).
     An empty query returns the most recent mail. Newest first, at most ``limit`` results,
-    metadata plus a short plain-text preview only (the agent calls read_email for the rest).
+    metadata plus a plain-text preview of up to SEARCH_PREVIEW_CHARS characters (the agent calls
+    read_email for the rest). Short messages therefore appear in full, as in a normal mail client.
     """
     user = _agent_user(db)
     words = [w for w in re.split(r"\W+", (query or "").lower()) if len(w) >= 3][:8]
@@ -434,7 +438,7 @@ def agent_search_emails(db: Session, query: str, limit: int = 5) -> list[dict]:
         haystack = " ".join([e.sender.email_address, e.subject, e.body or "", e.body_html or ""]).lower()
         if words and not any(w in haystack for w in words):
             continue
-        preview = " ".join((e.body or "").split())[:100]
+        preview = " ".join((e.body or "").split())[:SEARCH_PREVIEW_CHARS]
         out.append({"id": e.id, "from": e.sender.email_address, "subject": e.subject, "preview": preview})
         if len(out) >= limit:
             break
