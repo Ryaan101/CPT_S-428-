@@ -6,6 +6,7 @@ never call /mail/*. The routes are bound to the TARGET mailbox.
 
 What the agent's two tools map to:
     read_email  ->  GET  /agent/emails/{id}        (raw content as received)
+    search_mailbox -> GET /agent/search?q=         (earlier received mail, read-only)
     reply       ->  POST /agent/emails/{id}/reply  (always to the original sender)
 
 Forwarding is restricted to the fixed attacker account; arbitrary sending is unavailable.
@@ -18,7 +19,7 @@ Two routes are for the operator (the agent runner process), not for the model:
 import hmac
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -59,6 +60,14 @@ def context(db: Session = Depends(get_db)):
 def list_unprocessed(db: Session = Depends(get_db)):
     result = crud.agent_list_unprocessed(db)
     logger.info("agent operation=list count=%s", len(result))
+    return result
+
+
+@router.get("/search")
+def search_mailbox(q: str = Query("", max_length=200), db: Session = Depends(get_db)):
+    """Tool ``search_mailbox``: earlier mail received by the target. Read-only."""
+    result = crud.agent_search_emails(db, q)
+    logger.info("agent operation=search matches=%s", len(result))
     return result
 
 

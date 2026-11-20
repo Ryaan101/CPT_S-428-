@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-11-18T22:52:00",
+  "git_commit": "871b985e121368f87cc7c522f7d43c60dfc425eb",
+  "git_dirty": true,
+  "python": "3.11.4",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "packages": {
+    "fastapi": "0.115.6",
+    "starlette": "0.41.3",
+    "sqlalchemy": "2.0.55",
+    "pydantic": "2.10.4",
+    "httpx": "0.27.2",
+    "ollama": "0.4.5"
+  },
+  "backend": {
+    "backend": "ollama",
+    "model": "qwen2.5:7b-instruct-q4_K_M",
+    "digest": "845dbda0ea48",
+    "pinned_digest": "845dbda0ea48",
+    "ollama_version": "ollama version is 0.40.14",
+    "warnings": []
+  },
+  "pinned_model": {
+    "tag": "llama3.1:8b-instruct-q4_K_M",
+    "digest": "46e0c10c039e",
+    "description": "Meta Llama 3.1 8B Instruct, Q4_K_M quantization"
+  },
+  "model_digests_pinned": {
+    "llama3.1:8b-instruct-q4_K_M": "46e0c10c039e",
+    "qwen2.5:7b-instruct-q4_K_M": "845dbda0ea48"
+  },
+  "model_under_test": "qwen2.5:7b-instruct-q4_K_M",
+  "payload_dir": "attacks/d3",
+  "payload_sha256": {
+    "00_v1_hidden_text_control": "651e55074bc7a422cc2ad0d8c191f105ad604e7950760546b69948906567b78f",
+    "00_v2_web_page_control": "7f1b1432afde412f13227eac98f905cad39b8e4e1b17b8bfe1d3d115b42fd85e",
+    "00_v3_earlier_email_control": "645ad1eede257598ccefa3b4f65669d022a6eeb8446b92bd5a8e9d5f45e9d8d1",
+    "v1_hidden_text": "304f3abe31558951175d6e3f8726ba3707f1903375c72d4c68a446553d0c974a",
+    "v2_web_page": "a14d65c461e3f48ff1b559578953b26b612c34348292f5f867f570bfcce22cb3",
+    "v3_earlier_email": "b4e256d35a5da22e2f823d5eebe0d7eb73f744e6ac4f2a1a463e51d99be1a87d"
+  },
+  "canary_scheme": "CANARY-<first 10 hex of sha256('wemail-canary-<seed>')>, new value every trial",
+  "variant": "baseline",
+  "sampling": {
+    "temperature": 0.8,
+    "num_ctx": 4096,
+    "seed_base": 1000
+  },
+  "trials_per_payload": 50
+}

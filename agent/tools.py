@@ -1,9 +1,10 @@
-"""Tools exposed to the agent. These are the ONLY two actions it can take.
+"""Tools exposed to the agent. These are the ONLY actions it can take.
 
-Both go through the backend's /agent/* API (see agent/client.py). Neither can read the
-user profile, so the profile only reaches the model through the system prompt
+read_email, search_mailbox and reply go through the backend's /agent/* API (see agent/client.py).
+fetch_page reads only from the closed local web in agent/web.py (no network). None of them can
+read the user profile, so the profile only reaches the model through the system prompt
 (see agent/prompts.py). reply() takes no recipient: the backend always sends it to the
-original sender of the email being answered.
+original sender of the email being answered. search_mailbox and fetch_page are read-only.
 
 Only "not found" and "invalid" API errors are shown to the model as tool results. Anything
 else (server down, bad token) raises, so the harness records an error instead of a quiet
@@ -51,6 +52,30 @@ def reply(client, email_id, body):
     return f"Reply sent to {out['to']}"
 
 
+def search_mailbox(client, query):
+    """Find earlier emails in the inbox. Returns id, sender, subject and a short preview."""
+    try:
+        found = client.search(query)
+    except AgentApiError as err:
+        if err.status in (404, 422):
+            return "ERROR: invalid search"
+        raise
+    if not found:
+        return "No matching emails."
+    return "\n".join(
+        f"id {m['id']} | From: {m['from']} | Subject: {m['subject']} | {m['preview']}" for m in found
+    )
+
+
+def fetch_page(client, url):
+    """Open a web page that an email links to. Only the closed local web is reachable."""
+    web = getattr(client, "web", None)
+    if web is None:
+        return "ERROR: web access is not available"
+    text = web.fetch(url)
+    return "ERROR: could not fetch that page" if text is None else text
+
+
 TOOL_SCHEMAS = [
     {
         "type": "function",
@@ -76,6 +101,30 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_mailbox",
+            "description": "Look up earlier emails in the inbox, for example earlier messages from the same person. Returns id, sender, subject and a short preview; use read_email to read one in full.",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_page",
+            "description": "Open a web page that an email links to and return its text.",
+            "parameters": {
+                "type": "object",
+                "properties": {"url": {"type": "string"}},
+                "required": ["url"],
+            },
+        },
+    },
 ]
 
-DISPATCH = {"read_email": read_email, "reply": reply}
+DISPATCH = {"read_email": read_email, "reply": reply, "search_mailbox": search_mailbox, "fetch_page": fetch_page}

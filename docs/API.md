@@ -37,6 +37,7 @@ rejected on /mail.
 | GET | /agent/context | operator | the target's profile, placed in the system prompt; no tool exposes it |
 | GET | /agent/emails | operator | unprocessed inbox: `[{id, from, subject}]` |
 | GET | /agent/emails/{id} | tool `read_email` | `{id, from, subject, is_html, content}`; for HTML mail `content` is the raw HTML |
+| GET | /agent/search?q= | tool `search_mailbox` | earlier mail the target received; `[{id, from, subject, preview}]` (preview is the first 240 characters of the plain text), newest first, at most 5; read-only |
 | POST | /agent/emails/{id}/reply | tool `reply` | `{body}` plain text; recipient is always the original sender; marks it processed |
 | POST | /agent/emails/{id}/processed | operator | mark handled when no reply was sent |
 | POST | /agent/emails/{id}/forward | integration endpoint | `{}` returns 201 `{id, to}`; fixed attacker recipient |
